@@ -8,7 +8,7 @@ from modules.nllb_inference import NLLBInference
 from ui.htmls import *
 from modules.youtube_manager import get_ytmetas
 from modules.deepl_api import DeepLAPI
-from modules.whisper_data_class import *
+from modules.whisper_parameter import *
 
 
 class App:
@@ -17,8 +17,10 @@ class App:
         self.app = gr.Blocks(css=CSS, theme=self.args.theme)
         self.whisper_inf = WhisperInference() if self.args.disable_faster_whisper else FasterWhisperInference()
         if isinstance(self.whisper_inf, FasterWhisperInference):
+            self.whisper_inf.model_dir = args.faster_whisper_model_dir
             print("Use Faster Whisper implementation")
         else:
+            self.whisper_inf.model_dir = args.whisper_model_dir
             print("Use Open AI Whisper implementation")
         print(f"Device \"{self.whisper_inf.device}\" is detected")
         self.nllb_inf = NLLBInference()
@@ -49,7 +51,7 @@ class App:
                     with gr.Row():
                         input_file = gr.Files(type="filepath", label="Upload File here")
                     with gr.Row():
-                        dd_model = gr.Dropdown(choices=self.whisper_inf.available_models, value="large-v3",
+                        dd_model = gr.Dropdown(choices=self.whisper_inf.available_models, value="large-v2",
                                                label="Model")
                         dd_lang = gr.Dropdown(choices=["Automatic Detection"] + self.whisper_inf.available_langs,
                                               value="Automatic Detection", label="Language")
@@ -59,6 +61,7 @@ class App:
                     with gr.Row():
                         cb_timestamp = gr.Checkbox(value=True, label="Add a timestamp to the end of the filename", interactive=True)
                     with gr.Accordion("Advanced_Parameters", open=False):
+                        cb_vad_filter = gr.Checkbox(label="Enable Silero VAD Filter", value=False, interactive=True)
                         nb_beam_size = gr.Number(label="Beam Size", value=1, precision=0, interactive=True)
                         nb_log_prob_threshold = gr.Number(label="Log Probability Threshold", value=-1.0, interactive=True)
                         nb_no_speech_threshold = gr.Number(label="No Speech Threshold", value=0.6, interactive=True)
@@ -67,6 +70,8 @@ class App:
                         nb_patience = gr.Number(label="Patience", value=1, interactive=True)
                         cb_condition_on_previous_text = gr.Checkbox(label="Condition On Previous Text", value=True, interactive=True)
                         tb_initial_prompt = gr.Textbox(label="Initial Prompt", value=None, interactive=True)
+                        sd_temperature = gr.Slider(label="Temperature", value=0, step=0.01, maximum=1.0, interactive=True)
+                        nb_compression_ratio_threshold = gr.Number(label="Compression Ratio Threshold", value=2.4, interactive=True)
                     with gr.Row():
                         btn_run = gr.Button("GENERATE SUBTITLE FILE", variant="primary")
                     with gr.Row():
@@ -85,7 +90,10 @@ class App:
                                                              best_of=nb_best_of,
                                                              patience=nb_patience,
                                                              condition_on_previous_text=cb_condition_on_previous_text,
-                                                             initial_prompt=tb_initial_prompt)
+                                                             initial_prompt=tb_initial_prompt,
+                                                             temperature=sd_temperature,
+                                                             compression_ratio_threshold=nb_compression_ratio_threshold,
+                                                             vad_filter=cb_vad_filter)
                     btn_run.click(fn=self.whisper_inf.transcribe_file,
                                   inputs=params + whisper_params.to_list(),
                                   outputs=[tb_indicator, files_subtitles])
@@ -102,7 +110,7 @@ class App:
                             tb_title = gr.Label(label="Youtube Title")
                             tb_description = gr.Textbox(label="Youtube Description", max_lines=15)
                     with gr.Row():
-                        dd_model = gr.Dropdown(choices=self.whisper_inf.available_models, value="large-v3",
+                        dd_model = gr.Dropdown(choices=self.whisper_inf.available_models, value="large-v2",
                                                label="Model")
                         dd_lang = gr.Dropdown(choices=["Automatic Detection"] + self.whisper_inf.available_langs,
                                               value="Automatic Detection", label="Language")
@@ -113,6 +121,7 @@ class App:
                         cb_timestamp = gr.Checkbox(value=True, label="Add a timestamp to the end of the filename",
                                                    interactive=True)
                     with gr.Accordion("Advanced_Parameters", open=False):
+                        cb_vad_filter = gr.Checkbox(label="Enable Silero VAD Filter", value=False, interactive=True)
                         nb_beam_size = gr.Number(label="Beam Size", value=1, precision=0, interactive=True)
                         nb_log_prob_threshold = gr.Number(label="Log Probability Threshold", value=-1.0, interactive=True)
                         nb_no_speech_threshold = gr.Number(label="No Speech Threshold", value=0.6, interactive=True)
@@ -121,6 +130,8 @@ class App:
                         nb_patience = gr.Number(label="Patience", value=1, interactive=True)
                         cb_condition_on_previous_text = gr.Checkbox(label="Condition On Previous Text", value=True, interactive=True)
                         tb_initial_prompt = gr.Textbox(label="Initial Prompt", value=None, interactive=True)
+                        sd_temperature = gr.Slider(label="Temperature", value=0, step=0.01, maximum=1.0, interactive=True)
+                        nb_compression_ratio_threshold = gr.Number(label="Compression Ratio Threshold", value=2.4, interactive=True)
                     with gr.Row():
                         btn_run = gr.Button("GENERATE SUBTITLE FILE", variant="primary")
                     with gr.Row():
@@ -139,7 +150,10 @@ class App:
                                                              best_of=nb_best_of,
                                                              patience=nb_patience,
                                                              condition_on_previous_text=cb_condition_on_previous_text,
-                                                             initial_prompt=tb_initial_prompt)
+                                                             initial_prompt=tb_initial_prompt,
+                                                             temperature=sd_temperature,
+                                                             compression_ratio_threshold=nb_compression_ratio_threshold,
+                                                             vad_filter=cb_vad_filter)
                     btn_run.click(fn=self.whisper_inf.transcribe_youtube,
                                   inputs=params + whisper_params.to_list(),
                                   outputs=[tb_indicator, files_subtitles])
@@ -152,7 +166,7 @@ class App:
                     with gr.Row():
                         mic_input = gr.Microphone(label="Record with Mic", type="filepath", interactive=True)
                     with gr.Row():
-                        dd_model = gr.Dropdown(choices=self.whisper_inf.available_models, value="large-v3",
+                        dd_model = gr.Dropdown(choices=self.whisper_inf.available_models, value="large-v2",
                                                label="Model")
                         dd_lang = gr.Dropdown(choices=["Automatic Detection"] + self.whisper_inf.available_langs,
                                               value="Automatic Detection", label="Language")
@@ -160,6 +174,7 @@ class App:
                     with gr.Row():
                         cb_translate = gr.Checkbox(value=False, label="Translate to English?", interactive=True)
                     with gr.Accordion("Advanced_Parameters", open=False):
+                        cb_vad_filter = gr.Checkbox(label="Enable Silero VAD Filter", value=False, interactive=True)
                         nb_beam_size = gr.Number(label="Beam Size", value=1, precision=0, interactive=True)
                         nb_log_prob_threshold = gr.Number(label="Log Probability Threshold", value=-1.0, interactive=True)
                         nb_no_speech_threshold = gr.Number(label="No Speech Threshold", value=0.6, interactive=True)
@@ -168,6 +183,7 @@ class App:
                         nb_patience = gr.Number(label="Patience", value=1, interactive=True)
                         cb_condition_on_previous_text = gr.Checkbox(label="Condition On Previous Text", value=True, interactive=True)
                         tb_initial_prompt = gr.Textbox(label="Initial Prompt", value=None, interactive=True)
+                        sd_temperature = gr.Slider(label="Temperature", value=0, step=0.01, maximum=1.0, interactive=True)
                     with gr.Row():
                         btn_run = gr.Button("GENERATE SUBTITLE FILE", variant="primary")
                     with gr.Row():
@@ -186,7 +202,10 @@ class App:
                                                              best_of=nb_best_of,
                                                              patience=nb_patience,
                                                              condition_on_previous_text=cb_condition_on_previous_text,
-                                                             initial_prompt=tb_initial_prompt)
+                                                             initial_prompt=tb_initial_prompt,
+                                                             temperature=sd_temperature,
+                                                             compression_ratio_threshold=nb_compression_ratio_threshold,
+                                                             vad_filter=cb_vad_filter)
                     btn_run.click(fn=self.whisper_inf.transcribe_mic,
                                   inputs=params + whisper_params.to_list(),
                                   outputs=[tb_indicator, files_subtitles])
@@ -278,6 +297,8 @@ parser.add_argument('--password', type=str, default=None, help='Gradio authentic
 parser.add_argument('--theme', type=str, default=None, help='Gradio Blocks theme')
 parser.add_argument('--colab', type=bool, default=False, nargs='?', const=True, help='Is colab user or not')
 parser.add_argument('--api_open', type=bool, default=False, nargs='?', const=True, help='enable api or not')
+parser.add_argument('--whisper_model_dir', type=str, default=os.path.join("models", "Whisper"), help='Directory path of the whisper model')
+parser.add_argument('--faster_whisper_model_dir', type=str, default=os.path.join("models", "Whisper", "faster-whisper"), help='Directory path of the faster-whisper model')
 _args = parser.parse_args()
 
 if __name__ == "__main__":

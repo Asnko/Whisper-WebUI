@@ -14,7 +14,7 @@ import gradio as gr
 from .base_interface import BaseInterface
 from modules.subtitle_manager import get_srt, get_vtt, get_txt, write_file, safe_filename
 from modules.youtube_manager import get_ytdata, get_ytaudio
-from modules.whisper_data_class import *
+from modules.whisper_parameter import *
 
 # Temporal fix of the issue : https://github.com/jhj0517/Whisper-WebUI/issues/144
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
@@ -32,7 +32,7 @@ class FasterWhisperInference(BaseInterface):
         self.available_compute_types = ctranslate2.get_supported_compute_types(
             "cuda") if self.device == "cuda" else ctranslate2.get_supported_compute_types("cpu")
         self.current_compute_type = "float16" if self.device == "cuda" else "float32"
-        self.default_beam_size = 1
+        self.model_dir = os.path.join("models", "Whisper", "faster-whisper")
 
     def transcribe_file(self,
                         files: list,
@@ -268,7 +268,10 @@ class FasterWhisperInference(BaseInterface):
             log_prob_threshold=params.log_prob_threshold,
             no_speech_threshold=params.no_speech_threshold,
             best_of=params.best_of,
-            patience=params.patience
+            patience=params.patience,
+            temperature=params.temperature,
+            compression_ratio_threshold=params.compression_ratio_threshold,
+            vad_filter=params.vad_filter,
         )
         progress(0, desc="Loading audio..")
 
@@ -308,7 +311,7 @@ class FasterWhisperInference(BaseInterface):
         self.model = faster_whisper.WhisperModel(
             device=self.device,
             model_size_or_path=model_size,
-            download_root=os.path.join("models", "Whisper", "faster-whisper"),
+            download_root=self.model_dir,
             compute_type=self.current_compute_type
         )
 

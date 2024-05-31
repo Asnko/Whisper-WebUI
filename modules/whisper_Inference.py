@@ -10,7 +10,7 @@ import torch
 from .base_interface import BaseInterface
 from modules.subtitle_manager import get_srt, get_vtt, get_txt, write_file, safe_filename
 from modules.youtube_manager import get_ytdata, get_ytaudio
-from modules.whisper_data_class import *
+from modules.whisper_parameter import *
 
 DEFAULT_MODEL_SIZE = "large-v3"
 
@@ -26,7 +26,7 @@ class WhisperInference(BaseInterface):
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self.available_compute_types = ["float16", "float32"]
         self.current_compute_type = "float16" if self.device == "cuda" else "float32"
-        self.default_beam_size = 1
+        self.model_dir = os.path.join("models", "Whisper")
 
     def transcribe_file(self,
                         files: list,
@@ -257,7 +257,9 @@ class WhisperInference(BaseInterface):
                                                 fp16=True if params.compute_type == "float16" else False,
                                                 best_of=params.best_of,
                                                 patience=params.patience,
-                                                progress_callback=progress_callback)["segments"]
+                                                temperature=params.temperature,
+                                                compression_ratio_threshold=params.compression_ratio_threshold,
+                                                progress_callback=progress_callback,)["segments"]
         elapsed_time = time.time() - start_time
 
         return segments_result, elapsed_time
@@ -286,7 +288,7 @@ class WhisperInference(BaseInterface):
         self.model = whisper.load_model(
             name=model_size,
             device=self.device,
-            download_root=os.path.join("models", "Whisper")
+            download_root=self.model_dir
         )
 
     @staticmethod
