@@ -399,8 +399,7 @@ class App:
 
         # Launch the app with optional gradio settings
         launch_args = {}
-        if self.args.share:
-            launch_args['share'] = self.args.share
+        launch_args['share'] = False
         if self.args.server_name:
             launch_args['server_name'] = self.args.server_name
         if self.args.server_port:
